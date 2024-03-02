@@ -1,0 +1,17 @@
+.env
+.chroma
+
+**/__pycache__/**
+*.pyc
+
+*.csv
+*.xlsx
+
+*.ipynb
+!example.ipynb
+
+data/**
+
+dist/**
+
+*.png
