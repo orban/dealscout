@@ -9,10 +9,10 @@ class ImageRanker:
         # Initialize OpenAI client
         self.client = OpenAI()
 
-    def images_to_base64(self, file_names):
+    def images_to_base64(self, file_paths):
         base64_images = []
-        for file_name in file_names:
-            with open(f"media/{file_name}.jpg", "rb") as image_file:
+        for file_path in file_paths:
+            with open(file_path, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
                 base64_images.append(encoded_string)
         return base64_images
