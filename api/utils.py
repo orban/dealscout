@@ -1,4 +1,5 @@
 import aiohttp
+from typing import Dict
 from loguru import logger
 
 
