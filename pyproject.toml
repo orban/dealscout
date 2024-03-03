@@ -23,6 +23,7 @@ pydantic = "^2.6.3"
 twilio = "^9.0.0"
 peewee = "^3.17.1"
 pyppeteer = "^2.0.0"
+python-multipart = "^0.0.9"
 
 
 [tool.poetry.group.dev.dependencies]

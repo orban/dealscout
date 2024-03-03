@@ -1,10 +1,14 @@
 from fastapi import FastAPI
 from typing import Dict, List
 from api.db import *
-from api.perception import MarketplaceAssistant
-
+from api.multion import MarketplaceAssistant
 
 app = FastAPI()
+
+
+@app.get("/")
+async def hello():
+    return {"message": "Hello World"}
 
 
 @app.post("/query")
@@ -16,7 +20,19 @@ async def query(prompt: str):
     :return: A JSON list of matching marketplace items.
     """
     agent = MarketplaceAssistant()
-    return await agent.query(prompt)
+    return await agent.filter(prompt)
+
+
+@app.post("/message_seller")
+async def message_seller(urls: list):
+    """
+    Endpoint to handle messages to sellers on Facebook Marketplace.
+
+    :param urls: A list of URLs to be used for messaging the sellers.
+    :return: A JSON list of messages sent to the sellers.
+    """
+    agent = MarketplaceAssistant()
+    return await agent.message_seller(urls)
 
 
 def get_text(body: Dict) -> str:
