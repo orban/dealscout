@@ -13,7 +13,7 @@ app = FastAPI()
 
 @app.post("/rank_images")
 async def rank_images_endpoint(reference_image_urls: List[str], candidate_images: List[str]):
-    try:   
+    try:
         # Initialize the ranker
         ranker = ImageRanker()
         results = ranker.rank_images(reference_image_urls, candidate_images)
@@ -26,7 +26,7 @@ async def rank_images_endpoint(reference_image_urls: List[str], candidate_images
 async def scrape_marketplace(url: str, reference_image_urls: List[str]):
     scraper = FacebookMarketplaceScraper(headless=False)
     items = await scraper.scrape(url)
-    try:   
+    try:
         # Initialize the ranker
         ranker = ImageRanker()
         results = ranker.rank_images(reference_image_urls, items)
@@ -101,7 +101,8 @@ async def sms_webhook(body: Dict):
             updated_media = {
                 i: updated_media_list[i] for i in range(len(updated_media_list))
             }
-        update_request_by_id(latest_request.id, new_text, updated_media, started)
+        update_request_by_id(latest_request.id, new_text,
+                             updated_media, started)
 
     if started:
         start_agent()
