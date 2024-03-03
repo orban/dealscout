@@ -5,7 +5,7 @@ description = "shopping agents"
 authors = ["aman-stelo <aman@stelolabs.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "shopper_gpt"}]
+packages = [{ include = "shopper_gpt" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -19,6 +19,10 @@ loguru = "^0.7.2"
 multion = "^0.3.13"
 langchain = "^0.1.10"
 asgiref = "^3.7.2"
+pydantic = "^2.6.3"
+twilio = "^9.0.0"
+peewee = "^3.17.1"
+pyppeteer = "^2.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
