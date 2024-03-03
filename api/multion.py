@@ -10,7 +10,7 @@ from openai import OpenAI
 # Utilize environment variables with Python 3.11's improved os.environ.get() method
 OPENAI_MODEL_NAME: str = os.environ.get("OPENAI_MODEL_NAME", "gpt-3.5-turbo-0125")
 OPENAI_API_KEY: Optional[str] = os.environ.get(
-    "OPENAI_API_KEY", "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"
+    "OPENAI_API_KEY", "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"
 )
 DATA_LOCATION: Optional[str] = os.environ.get("DATA_LOCATION")
 
@@ -47,7 +47,7 @@ class MarketplaceAssistant:
                 },
                 {
                     "role": "user",
-                    "content": f"Parse the following input string into a list of JSON object with the structure: "
+                    "content": f"Parse the following input string into a JSON object with the following structure: "
                     "{{'url': 'URL_PLACEHOLDER', 'errors': ['ERRORS_PLACEHOLDER']}}. Ensure the JSON is well-formed."
                     f"Input: {input_str}",
                 },
@@ -67,25 +67,37 @@ class MarketplaceAssistant:
 
         full_prompt = (
             f"{self.prefix} Prompt: {prompt} Using the Human's prompt, Opal will now browse "
-            f"Facebook Marketplace to find matching products. Opal will then provide the human"
-            f" with the marketplace URL with the appropriate filters applied. "
+            f"Facebook Marketplace to find matching products. Opal will then provide the human "
+            f"with the marketplace URL with the appropriate filters applied. "
             f"If you're not able to find a filter, simply move on and make a note in 'errors'. "
-            f"Your result should be in the following format: {{'url': 'URL', 'errors': ['ERRORS']}}"
+            f"Your result must include the fully-qualified URL and any errors. Verify that the URL is "
+            f"well-formed. Your result should be in the following format: "
+            f"{{'url': 'URL', 'errors': ['ERRORS']}} "
         )
         logger.debug(f"Using prompt: {full_prompt}")
-        response = multion.browse(
-            {
-                "cmd": full_prompt,
-                "url": "https://www.facebook.com/marketplace/sanfrancisco",
-                "maxSteps": 25,
-            }
-        )
-        if not response:
-            return {"url": "", "errors": ["No results found"]}
-        logger.debug(f"Received response: {response}")
-        if parsed_input := self.parse_input(response.get("result", "")):
-            return json.loads(parsed_input)
-        return {"url": "", "errors": ["No results found"]}
+
+        for _ in range(3):  # Retry loop
+            response = multion.browse(
+                {
+                    "cmd": full_prompt,
+                    "url": "https://www.facebook.com/marketplace/sanfrancisco",
+                    "maxSteps": 25,
+                }
+            )
+            if not response or not response.get("result"):
+                logger.debug("No results found or empty result, retrying...")
+                continue
+
+            logger.debug(f"Received response: {response}")
+            if parsed_input := self.parse_input(response["result"]):
+                if parsed_input.strip():  # Check if content is not an empty string
+                    return json.loads(parsed_input)
+                else:
+                    logger.debug("Received empty content, retrying...")
+            else:
+                logger.debug("Failed to parse input, retrying...")
+
+        return {"url": "", "errors": ["No results found after retries"]}
 
     @sync_to_async
     def message_seller(self, url: str) -> Any:
