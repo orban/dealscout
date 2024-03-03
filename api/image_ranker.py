@@ -11,6 +11,7 @@ class ImageRanker:
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
 
+
     def construct_prompt(self, references, consideration, base64_image):
         message_array = [
             {
@@ -41,7 +42,7 @@ class ImageRanker:
             {
                 "type": "image_url",
                 "image_url": {
-                    "url": f"data:image/jpeg;base64,{base64_image}"
+                    "url": f"data:image/png;base64,{base64_image}"
                 },
             },
         )
