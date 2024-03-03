@@ -1,14 +1,11 @@
-from typing import List, Optional, Dict, Any
+from typing import Any, List, Optional
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Response
 from fastapi import Request as APIRequest
-from loguru import logger
+from loguru import logger  # noqa
 
 import api.whatsapp as whatsapp
 from api.db import create_new_request, get_latest_request, update_request_by_id
-from fastapi import FastAPI, HTTPException, Request as APIRequest, Response, BackgroundTasks
-from loguru import logger
-from api.image_ranker import ImageRanker
 from api.facebook_marketplace_scraper import FacebookMarketplaceScraper
 from api.image_ranker import ImageRanker
 from api.multion import MarketplaceAssistant
@@ -27,8 +24,7 @@ async def scrape_marketplace(url: str, reference_image_urls: List[str]) -> Any:
         return rankings
     except Exception as e:
         logger.exception("Failed to scrape marketplace.")
-        raise HTTPException(
-            status_code=500, detail="Internal Server Error") from e
+        raise HTTPException(status_code=500, detail="Internal Server Error") from e
 
 
 async def start_shopping(
@@ -45,14 +41,13 @@ async def start_shopping(
                 whatsapp.message_user(phone, [url])
             except Exception as e:
                 logger.exception(f"Error messaging seller for URL {url}. {e}")
-    logger.debug(
-        f"Marketplace assistant did not return valid URL {filter_res}")
+    logger.debug(f"Marketplace assistant did not return valid URL {filter_res}")
 
 
 @app.api_route("/sms_webhook", methods=["POST", "GET"])
 async def sms_webhook(
     request: APIRequest, background_tasks: BackgroundTasks
-) -> Optional[Response]:
+) -> Response:
     if request.method == "GET":
         challenge = request.query_params.get("hub.challenge")
         return Response(
@@ -88,17 +83,14 @@ async def sms_webhook(
         updated_media = latest_request.media + media if media else latest_request.media
         if text.lower() == "start":
             started = True
-        update_request_by_id(latest_request.id, new_text,
-                             updated_media, started)
+        update_request_by_id(latest_request.id, new_text, updated_media, started)
 
     if started:
-        logger.debug(
-            f"Starting marketplace agent with prompt: {latest_request.text}")
+        logger.debug(f"Starting marketplace agent with prompt: {latest_request.text}")
         whatsapp.message_user(
             phone, "🫡 We're on it! We'll let you know when we find some matches."
         )
-        background_tasks.add_task(
-            start_shopping, phone, latest_request.text, media)
+        background_tasks.add_task(start_shopping, phone, latest_request.text, media)
     else:
         whatsapp.message_user(
             phone,
