@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 
 
-from api.perception import MarketplaceAssistant
-
 app = FastAPI()
 
 
@@ -11,7 +9,7 @@ async def hello():
     return {"message": "Hello World"}
 
 
-@app.put("/query")
+@app.post("/query")
 async def query(prompt: str):
     """
     Endpoint to handle queries to the MarketplaceAssistant.
