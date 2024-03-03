@@ -18,7 +18,7 @@ class BaseModel(Model):
 class Request(BaseModel):
     id = AutoField()
     text = CharField()
-    media = JSONField()
+    media = CharField()
     started = BooleanField(default=False)
 
 
