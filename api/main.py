@@ -9,17 +9,6 @@ import api.whatsapp as whatsapp
 app = FastAPI()
 
 
-@app.post("/rank_images")
-async def rank_images_endpoint(reference_image_urls: List[str], candidate_images: List[str]):
-    try:
-        # Initialize the ranker
-        ranker = ImageRanker()
-        results = ranker.rank_images(reference_image_urls, candidate_images)
-        return results
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 async def scrape_marketplace(url: str, reference_image_urls: List[str]):
     scraper = FacebookMarketplaceScraper(headless=False)
     items = await scraper.scrape(url)
@@ -32,10 +21,6 @@ async def scrape_marketplace(url: str, reference_image_urls: List[str]):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def message_user(phone: str, urls: List[str]):
-    pass
-
-
 async def start_shopping(phone: str, prompt: str, media: List[str] = []):
     agent = MarketplaceAssistant()
     filter_res = await agent.filter(prompt)
@@ -43,7 +28,7 @@ async def start_shopping(phone: str, prompt: str, media: List[str] = []):
     product_urls = await scrape_marketplace(search_url, media)
     for url in product_urls:
         await agent.message_seller(url)
-        message_user(phone, url)
+        whatsapp.message_user(phone, url)
 
 
 @app.api_route("/sms_webhook", methods=["POST", "GET"])
