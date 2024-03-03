@@ -5,7 +5,15 @@ from typing import Any, Dict, Optional
 import multion  # noqa
 from asgiref.sync import sync_to_async  # noqa
 from loguru import logger  # noqa
-from openai import OpenAI
+from openai import AsyncOpenAI
+
+# Utilize environment variables with Python 3.11's improved os.environ.get() method
+OPENAI_MODEL_NAME: str = os.environ.get("OPENAI_MODEL_NAME", "gpt-3.5-turbo-0125")
+OPENAI_API_KEY: Optional[str] = os.environ.get("OPENAI_API_KEY")
+DATA_LOCATION: Optional[str] = os.environ.get("DATA_LOCATION")
+
+# Initialize the OpenAI client outside of the class to avoid reinitialization
+openai_client: AsyncOpenAI = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 
 class MarketplaceAssistant:
@@ -14,26 +22,22 @@ class MarketplaceAssistant:
     and return structured data.
     """
 
-    OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "gpt-3.5-turbo-0125")
-    OPENAI_API_KEY: Optional[str] = os.getenv(
-        "OPENAI_API_KEY",
-    )
-    DATA_LOCATION: Optional[str] = os.getenv("DATA_LOCATION")
-    client: OpenAI = OpenAI(api_key=OPENAI_API_KEY)
-
     def __init__(self) -> None:
         multion.login()
         self.prefix: str = (
-            "You are Opal, a personal assistant interacting in a conversation with your human companion to help them find matching products online. The human companion will provide you with a prompt, and you will use the Multion API to browse Facebook Marketplace with the given prompt."
+            "You are Opal, a personal assistant interacting in a conversation with your human companion to help them "
+            "find matching products online. The human companion will provide you with a prompt, "
+            "and you will use the Multion API to browse Facebook Marketplace with the given prompt."
         )
 
-    def parse_input(self, input_str: str) -> str | None:
+    async def parse_input(self, input_str: str) -> str | None:
         if not input_str:
-            return ""
+            return None
         logger.debug(f"Received input string: {input_str}")
-        # use the OpenAI API to parse the input string
-        response = self.client.chat.completions.create(
-            model=self.OPENAI_MODEL_NAME,
+        # Use the OpenAI API to parse the input string asynchronously
+        response = await openai_client.chat.completions.create(
+            model=OPENAI_MODEL_NAME,
+            response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system",
@@ -48,10 +52,9 @@ class MarketplaceAssistant:
             ],
         )
         logger.debug(f"Received response: {response}")
-        return response.choices[0].message.content if response.choices else ""
+        return response.choices[0].message.content if response.choices else None
 
-    @sync_to_async
-    def filter(self, prompt: str) -> Dict[str, Any]:
+    async def filter(self, prompt: str) -> Dict[str, Any]:
         """
         Logs into Multion and uses it to browse Facebook Marketplace with a given prompt.
 
@@ -59,9 +62,13 @@ class MarketplaceAssistant:
         :return: The result of the Multion browsing operation.
         """
 
-        full_prompt = f"{self.prefix} Prompt: {prompt} Using the Human's prompt, Opal will now browse Facebook Marketplace to find matching products. Opal will then provide the human with the marketplace URL with the appropriate filters applied. If you're not able to find a filter, simply move on and make a note in 'errors'. Your result should be in the following format: {{'url': 'URL', 'errors': ['ERRORS']}}"
+        full_prompt = (f"{self.prefix} Prompt: {prompt} Using the Human's prompt, Opal will now browse "
+                       f"Facebook Marketplace to find matching products. Opal will then provide the human"
+                       f" with the marketplace URL with the appropriate filters applied. "
+                       f"If you're not able to find a filter, simply move on and make a note in 'errors'. "
+                       f"Your result should be in the following format: {{'url': 'URL', 'errors': ['ERRORS']}}")
         logger.debug(f"Using prompt: {full_prompt}")
-        response = multion.browse(
+        response = await sync_to_async(multion.browse)(
             {
                 "cmd": full_prompt,
                 "url": "https://www.facebook.com/marketplace/sanfrancisco",
@@ -71,7 +78,7 @@ class MarketplaceAssistant:
         if not response:
             return {"url": "", "errors": ["No results found"]}
         logger.debug(f"Received response: {response}")
-        if parsed_input := self.parse_input(response.get("result", "")):
+        if parsed_input := await self.parse_input(response.get("result", "")):
             return json.loads(parsed_input)
         return {"url": "", "errors": ["No results found"]}
 
@@ -79,10 +86,13 @@ class MarketplaceAssistant:
         """
         Logs into Multion and uses it to message a seller on Facebook Marketplace.
 
-        :param urls: The list of URLs of the sellers to be messaged.
+        :param url: The URL of the seller to be messaged.
         :return: The result of the Multion messaging operation.
         """
-        full_prompt = f"{self.prefix} For the following URL, Opal will now message the seller with a personalized message on Facebook Marketplace. URL: {url} If you're not able to message the seller, simply move on and make a note in 'errors'. Your result should be in the following format: {{'message': 'MESSAGE', 'errors': ['ERRORS']}}"
+        full_prompt = (f"{self.prefix} For the following URL, Opal will now message the seller with a personalized "
+                       f"message on Facebook Marketplace. URL: {url} If you're not able to message the seller, "
+                       f"simply move on and make a note in 'errors'. "
+                       f"Your result should be in the following format: {{'message': 'MESSAGE', 'errors': ['ERRORS']}}")
         logger.debug(f"Using prompt: {full_prompt}")
         result = await sync_to_async(multion.browse)(
             {
