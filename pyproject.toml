@@ -5,12 +5,13 @@ description = "shopping agents"
 authors = ["aman-stelo <aman@stelolabs.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "shopper_gpt"}]
+packages = [{include = "api"}]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 openai = "^1.13.3"
 fastapi = "^0.110.0"
+playwright = "^1.41.2"
 
 
 [build-system]

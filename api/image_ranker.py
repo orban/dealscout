@@ -1,5 +1,4 @@
 from openai import OpenAI
-import base64
 import json
 
 class ImageRanker:
@@ -7,25 +6,11 @@ class ImageRanker:
         # Initialize OpenAI client
         self.client = OpenAI()
 
-    def encode_image(self, image_path):
-        with open(image_path, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
-
-
-    def construct_prompt(self, references, consideration, base64_image):
+    def construct_prompt(self, references, items):
         message_array = [
             {
                 "type": "text",
-                "text": f"""The first {len(references)} images are the style I like and I'm looking to buy something in that style. 
-                            The last image contains five other items I'm considering. 
-                            Return a ranked json list of the five items in the last image. 
-                            It should include the item index, rank, and whether I should buy it (be very discerning). 
-                            Do not include any other thinking or information before or after the json
-                            The json format is:
-                            index: [item index]
-                            rank: [item rank]
-                            buy: True/False
-                            """,
+                "text": f"""The next {len(references)} images are the style I like and I'm looking to buy something in that style. """,
             }
         ]
         for reference in references:
@@ -38,14 +23,40 @@ class ImageRanker:
                 },
             )
 
-        message_array.append(
-            {
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/png;base64,{base64_image}"
+            message_array.append(
+                {
+                    "type": "text",
+                    "text": 
+                        """The following images are items I'm considering buying.
+                        Return a ranked json list of the items. 
+                        It should include the item name, index, rank, and whether I should buy it (be very discerning. I only want to buy stuff that fits my style). 
+                        Do not include any other thinking or information before or after the json.
+                        The json format is:
+                        index: [item index]
+                        item_name: [string]
+                        rank: [item rank]
+                        buy: True/False
+                        """
                 },
-            },
-        )
+            )
+
+        for index, item in enumerate(items):
+            message_array.append(
+                {
+                    "type": "text",
+                    "text": f"The following item has an item_name of {item['product_name']} and has index {index}",
+                },
+            )
+            message_array.append(
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": item["image_url"],
+                    },
+                },
+            )
+        
+        print(message_array)
 
         response = self.client.chat.completions.create(
             model="gpt-4-vision-preview",
@@ -57,19 +68,27 @@ class ImageRanker:
             ],
             max_tokens=4000,
         )
-        return response.choices[0].message.content
+        return(json.loads(response.choices[0].message.content))
+    
+    def convert_to_json(self, message):
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo-1106",
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": "parse this message and extract the json from it" },
+                {"role": "user", "content": message}
+            ]
+        )
+        return(response.choices[0].message.content)
 
-    def rank_images(self, reference_image_urls: list, consideration_image_urls: list, image_path: str):
+    def rank_images(self, reference_image_urls: list, items: list):
         try:
-            # Getting the base64 string
-            base64_image = self.encode_image(image_path)
             
-            # Constructing the prompt
-            response = self.construct_prompt(reference_image_urls, consideration_image_urls, base64_image)
+            response = self.construct_prompt(reference_image_urls, items)
             
-            # Convert the response to JSON
-            json_response = json.loads(response)
+            ranking = self.convert_to_json(response)
+            buy_items = [items[i['index']]['page_url'] for i in ranking['data'] if i['buy']]
             
-            return json_response
+            return buy_items
         except Exception as e:
             raise e
