@@ -24,6 +24,7 @@ async def rank_images_endpoint(reference_image_urls: List[str], candidate_images
 class ScrapeMarketplaceRequest(BaseModel):
     url: str
     reference_image_urls: List[str]
+    message: str
 
 
 @app.post("/scrape_marketplace")
@@ -33,7 +34,7 @@ async def scrape_marketplace(request: ScrapeMarketplaceRequest):
     try:   
         # Initialize the ranker
         ranker = ImageRanker()
-        results = ranker.rank_images(request.reference_image_urls, items)
+        results = ranker.rank_images(request.reference_image_urls, items, request.message)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
