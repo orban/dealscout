@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request as APIRequest, Response, BackgroundTasks
+from loguru import logger
 from api.image_ranker import ImageRanker
 from api.facebook_marketplace_scraper import FacebookMarketplaceScraper
 from typing import Dict, List
@@ -38,7 +39,7 @@ async def sms_webhook(request: APIRequest, background_tasks: BackgroundTasks):
         return Response(content=challenge, status_code=200, headers={"Content-Type": "text/plain"})
 
     body = await request.json()
-    print("Received body:", body)
+    logger.debug("Received body:", body)
     text = whatsapp.get_text(body)
     media = whatsapp.get_media(body)
     phone = whatsapp.get_phone(body)
@@ -46,23 +47,23 @@ async def sms_webhook(request: APIRequest, background_tasks: BackgroundTasks):
     if not phone:
         return
 
-    print(f"Text: {text}")
-    print(f"Media: {media}")
-    print(f"Phone: {phone}")
+    logger.debug(f"Text: {text}")
+    logger.debug(f"Media: {media}")
+    logger.debug(f"Phone: {phone}")
 
     latest_request = get_latest_request()
 
     started = False
 
     if latest_request is None or latest_request.started:
-        print("Starting new request")
+        logger.debug("Starting new request")
         if text is not None and text.lower() == "start":
             whatsapp.message_user(
                 phone, """Welcome to the Marketplace Assistant! Please describe what you're looking for. 
                 You can also send images to help us find the best matches. When you're ready, type 'start' to begin.""")
         create_new_request(text, {i: media[i] for i in range(len(media))})
     else:
-        print(f"Continuing current request {latest_request.id}")
+        logger.debug(f"Continuing current request {latest_request.id}")
         if text.lower() == "start":
             started = True
             new_text = latest_request.text
@@ -77,11 +78,12 @@ async def sms_webhook(request: APIRequest, background_tasks: BackgroundTasks):
         update_request_by_id(latest_request.id, new_text,
                              updated_media, started)
     if started:
-        print("Starting marketplace agent with prompt:", latest_request.text)
+        logger.debug("Starting marketplace agent with prompt:",
+                     latest_request.text)
         whatsapp.message_user(
             phone, "🫡 We're on it! We'll let you know when we find some matches.")
-        # background_tasks.add_task(
-        #     start_shopping, phone, latest_request.text, media)
+        background_tasks.add_task(
+            start_shopping, phone, latest_request.text, media)
     else:
         whatsapp.message_user(
             phone, "Understood! Type 'start' when you're done providing instructions and we'll begin shopping.")
