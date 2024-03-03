@@ -8,7 +8,8 @@ from loguru import logger  # noqa
 from openai import OpenAI
 
 # Utilize environment variables with Python 3.11's improved os.environ.get() method
-OPENAI_MODEL_NAME: str = os.environ.get("OPENAI_MODEL_NAME", "gpt-3.5-turbo-0125")
+OPENAI_MODEL_NAME: str = os.environ.get(
+    "OPENAI_MODEL_NAME", "gpt-3.5-turbo-0125")
 OPENAI_API_KEY: Optional[str] = os.environ.get(
     "OPENAI_API_KEY", "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"
 )
@@ -47,8 +48,7 @@ class MarketplaceAssistant:
                 },
                 {
                     "role": "user",
-                    "content": f"Parse the following input string into a list of JSON object with the structure: "
-                    "{{'url': 'URL_PLACEHOLDER', 'errors': ['ERRORS_PLACEHOLDER']}}. Ensure the JSON is well-formed."
+                    "content": f"Parse the following input and return the URL, and any errors if present. Return a well-formed JSON object with two keys: 'url' and 'errors'"
                     f"Input: {input_str}",
                 },
             ],
@@ -83,7 +83,7 @@ class MarketplaceAssistant:
         if not response:
             return {"url": "", "errors": ["No results found"]}
         logger.debug(f"Received response: {response}")
-        if parsed_input := self.parse_input(response.get("result", "")):
+        if parsed_input := self.parse_input(response):
             return json.loads(parsed_input)
         return {"url": "", "errors": ["No results found"]}
 

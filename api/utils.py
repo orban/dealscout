@@ -21,4 +21,4 @@ def list_to_str(lst: list) -> str:
 
 
 def str_to_list(s: str) -> list:
-    return s.split(",") if s is not None else []
+    return s.split(",") if s else []

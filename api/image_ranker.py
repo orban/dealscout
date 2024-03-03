@@ -1,5 +1,6 @@
 import base64
 import json
+from loguru import logger
 
 from openai import OpenAI
 
@@ -12,8 +13,9 @@ class ImageRanker:
     def images_to_base64(self, file_paths):
         base64_images = []
         for file_path in file_paths:
-            with open(file_path, "rb") as image_file:
-                encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
+            with open(f"media/{file_path}.jpg", "rb") as image_file:
+                encoded_string = base64.b64encode(
+                    image_file.read()).decode("utf-8")
                 base64_images.append(encoded_string)
         return base64_images
 
@@ -93,7 +95,7 @@ class ImageRanker:
             messages=[
                 {
                     "role": "system",
-                    "content": "parse this message and extract the json from it",
+                    "content": "This message contains a list of JSON objects. Return a single JSON object containing a single key 'data' with the list of objects inside it",
                 },
                 {"role": "user", "content": message},
             ],
@@ -104,6 +106,7 @@ class ImageRanker:
         try:
 
             response = self.construct_prompt(reference_image_urls, items)
+            logger.debug(f"Ranker response: {response}")
             ranking = self.convert_to_json(response)
             return [items[i["index"]]["page_url"] for i in ranking["data"] if i["buy"]]
         except Exception as e:

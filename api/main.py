@@ -26,21 +26,25 @@ async def scrape_marketplace(prompt: str, search_url: str, media: List[str]) -> 
 
 
 async def start_shopping(
-    phone: str, prompt: str, media: Optional[List[str]] = None
+    phone: str, prompt: str, media: List[str]
 ) -> None:
+    logger.debug(
+        f"Starting shopper with args: \n {phone} \n {prompt} \n {media}")
     media = media or []
     agent = MarketplaceAssistant()
     filter_res = await agent.filter(prompt)
     if search_url := filter_res.get("url"):
+        logger.debug(f"Scraping marketplace for URL: {search_url}")
         product_urls = await scrape_marketplace(prompt, search_url, media)
         for url in product_urls:
             try:
                 await agent.message_seller(url)
-                whatsapp.message_user(phone, [url])
+                whatsapp.message_user(phone, url)
             except Exception as e:
                 logger.exception(f"Error messaging seller for URL {url}. {e}")
-    logger.debug(
-        f"Marketplace assistant did not return valid URL {filter_res}")
+    else:
+        logger.debug(
+            f"Marketplace assistant did not return valid URL {filter_res}")
 
 
 @app.api_route("/sms_webhook", methods=["POST", "GET"])
@@ -100,7 +104,7 @@ async def sms_webhook(
             phone, "🫡 We're on it! We'll let you know when we find some matches."
         )
         background_tasks.add_task(
-            start_shopping, phone, latest_request.text, updated_media)
+            start_shopping, phone, latest_request.text, str_to_list(updated_media))
     else:
         whatsapp.message_user(
             phone,

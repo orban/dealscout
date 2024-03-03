@@ -1,5 +1,6 @@
 from playwright.async_api import async_playwright
 
+
 class FacebookMarketplaceScraper:
     def __init__(self, headless=True):
         self.headless = headless
@@ -9,13 +10,15 @@ class FacebookMarketplaceScraper:
         page = await browser.new_page()
 
         await page.goto(url, wait_until='domcontentloaded')
-        await page.goto(url, wait_until='networkidle', timeout=60000)  # Timeout in milliseconds
+        # Timeout in milliseconds
+        await page.goto(url, wait_until='networkidle', timeout=60000)
         item_elements = await page.query_selector_all('a[href*="/marketplace/item/"]')
         items = []
 
         for item_element in item_elements:
+            href = await item_element.get_attribute('href')
             item = {}
-            item['page_url'] = await item_element.get_attribute('href')
+            item['page_url'] = f"https://www.facebook.com/{href}"
             image_element = await item_element.query_selector('img[src*="scontent-sjc3"]')
             item['image_url'] = await image_element.get_attribute('src') if image_element else "Image URL not found"
             item['product_name'] = await image_element.get_attribute('alt') if image_element else "Product name not found"
