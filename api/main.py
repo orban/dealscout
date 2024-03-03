@@ -1,8 +1,9 @@
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Response
 from fastapi import Request as APIRequest
 from loguru import logger  # noqa
+from pydantic import BaseModel
 
 import api.whatsapp as whatsapp
 from api.db import create_new_request, get_latest_request, update_request_by_id
@@ -13,18 +14,22 @@ from api.multion import MarketplaceAssistant
 app = FastAPI()
 
 
-async def scrape_marketplace(url: str, reference_image_urls: List[str]) -> Any:
-    logger.debug(f"Scraping marketplace with URL: {url}")
-    scraper = FacebookMarketplaceScraper(headless=True)
+class ScrapeMarketplaceRequest(BaseModel):
+    url: str
+    reference_image_urls: List[str]
+    message: str
+
+
+@app.post("/scrape_marketplace")
+async def scrape_marketplace(request: ScrapeMarketplaceRequest):
+    scraper = FacebookMarketplaceScraper(headless=False)
+    items = await scraper.scrape(request.url)
     try:
-        items = await scraper.scrape(url)
+        # Initialize the ranker
         ranker = ImageRanker()
-        rankings = ranker.rank_images(reference_image_urls, items)
-        logger.debug(f"Rankings: {rankings}")
-        return rankings
+        return ranker.rank_images(request.reference_image_urls, items, request.message)
     except Exception as e:
-        logger.exception("Failed to scrape marketplace.")
-        raise HTTPException(status_code=500, detail="Internal Server Error") from e
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 async def start_shopping(
