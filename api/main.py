@@ -4,6 +4,7 @@ from .image_ranker import ImageRanker
 from typing import List
 from .facebook_marketplace_scraper import FacebookMarketplaceScraper
 from typing import Dict, List
+from pydantic import BaseModel
 
 from api.db import create_new_request, get_latest_request, update_request_by_id
 from api.multion import MarketplaceAssistant  # noqa
@@ -20,16 +21,19 @@ async def rank_images_endpoint(reference_image_urls: List[str], candidate_images
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+class ScrapeMarketplaceRequest(BaseModel):
+    url: str
+    reference_image_urls: List[str]
 
 
-@app.get("/scrape_marketplace")
-async def scrape_marketplace(url: str, reference_image_urls: List[str]):
+@app.post("/scrape_marketplace")
+async def scrape_marketplace(request: ScrapeMarketplaceRequest):
     scraper = FacebookMarketplaceScraper(headless=False)
-    items = await scraper.scrape(url)
-    try:
+    items = await scraper.scrape(request.url)
+    try:   
         # Initialize the ranker
         ranker = ImageRanker()
-        results = ranker.rank_images(reference_image_urls, items)
+        results = ranker.rank_images(request.reference_image_urls, items)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

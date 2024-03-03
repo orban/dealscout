@@ -1,6 +1,7 @@
 from openai import OpenAI
 import json
 
+
 class ImageRanker:
     def __init__(self):
         # Initialize OpenAI client
@@ -26,8 +27,7 @@ class ImageRanker:
             message_array.append(
                 {
                     "type": "text",
-                    "text": 
-                        """The following images are items I'm considering buying.
+                    "text": """The following images are items I'm considering buying.
                         Return a ranked json list of the items. 
                         It should include the item name, index, rank, and whether I should buy it (be very discerning. I only want to buy stuff that fits my style). 
                         Do not include any other thinking or information before or after the json.
@@ -36,11 +36,11 @@ class ImageRanker:
                         item_name: [string]
                         rank: [item rank]
                         buy: True/False
-                        """
+                        """,
                 },
             )
 
-        for index, item in enumerate(items):
+        for index, item in enumerate(items[0:5]):
             message_array.append(
                 {
                     "type": "text",
@@ -50,45 +50,45 @@ class ImageRanker:
             message_array.append(
                 {
                     "type": "image_url",
-                    "image_url": {
-                        "url": item["image_url"],
-                    },
+                    "image_url": {"url": item["image_url"]},
                 },
             )
-        
-        print(message_array)
 
-        response = self.client.chat.completions.create(
-            model="gpt-4-vision-preview",
-            messages=[
-                {
-                    "role": "user",
-                    "content": message_array,
-                }
-            ],
-            max_tokens=4000,
-        )
-        return(json.loads(response.choices[0].message.content))
-    
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4-vision-preview",
+                messages=[
+                    {"role": "user", "content": message_array}
+                ],
+                max_tokens=4000,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return {"error": str(e)}
+
     def convert_to_json(self, message):
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo-1106",
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": "parse this message and extract the json from it" },
-                {"role": "user", "content": message}
-            ]
+                {
+                    "role": "system",
+                    "content": "parse this message and extract the json from it",
+                },
+                {"role": "user", "content": message},
+            ],
         )
-        return(response.choices[0].message.content)
+        return json.loads(response.choices[0].message.content)
 
     def rank_images(self, reference_image_urls: list, items: list):
         try:
-            
+
             response = self.construct_prompt(reference_image_urls, items)
-            
             ranking = self.convert_to_json(response)
-            buy_items = [items[i['index']]['page_url'] for i in ranking['data'] if i['buy']]
-            
+            buy_items = [
+                items[i["index"]]['page_url'] for i in ranking["data"] if i["buy"]
+            ]
+
             return buy_items
         except Exception as e:
             raise e
