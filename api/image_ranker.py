@@ -18,7 +18,7 @@ class ImageRanker:
                 "role": "user",
                 "content": {
                     "type": "text",
-                    "text": f"The next {len(references)} images are the style I like and I'm looking to buy something in that style.
+                    "text": f"""The next {len(references)} images are the style I like and I'm looking to buy something in that style.
                         Return a ranked json list of the items.
                         It should include the item name, index, rank, and whether I should buy it (be very discerning. I only want to buy stuff that fits my style).
                         Do not include any other thinking or information before or after the json.
@@ -86,6 +86,7 @@ class ImageRanker:
         try:
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo-1106",
+                response_format={"type": "json_object"},
                 messages=[
                     {
                         "role": "system",
