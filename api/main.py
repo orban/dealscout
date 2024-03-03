@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException, Request as APIRequest, Response, Bac
 from api.image_ranker import ImageRanker
 from api.facebook_marketplace_scraper import FacebookMarketplaceScraper
 from typing import Dict, List
-from pydantic import BaseModel
 from api.db import create_new_request, get_latest_request, update_request_by_id
 from api.multion import MarketplaceAssistant  # noqa
 import api.whatsapp as whatsapp
@@ -21,26 +20,16 @@ async def rank_images_endpoint(reference_image_urls: List[str], candidate_images
         raise HTTPException(status_code=500, detail=str(e))
 
 
-class ScrapeMarketplaceRequest(BaseModel):
-    url: str
-    reference_image_urls: List[str]
-
-
-@app.post("/scrape_marketplace")
-async def scrape_marketplace(request: ScrapeMarketplaceRequest):
+async def scrape_marketplace(url: str, reference_image_urls: List[str]):
     scraper = FacebookMarketplaceScraper(headless=False)
-    items = await scraper.scrape(request.url)
+    items = await scraper.scrape(url)
     try:
         # Initialize the ranker
         ranker = ImageRanker()
-        results = ranker.rank_images(request.reference_image_urls, items)
+        results = ranker.rank_images(reference_image_urls, items)
         return results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-def ranker(url: str, media: List[str]):
-    pass
 
 
 def message_user(phone: str, urls: List[str]):
@@ -51,9 +40,10 @@ async def start_shopping(phone: str, prompt: str, media: List[str] = []):
     agent = MarketplaceAssistant()
     filter_res = await agent.filter(prompt)
     search_url = filter_res['url']
-    product_urls = await ranker(search_url, media)
-    await agent.message_seller(product_urls)
-    message_user(phone, product_urls)
+    product_urls = await scrape_marketplace(search_url, media)
+    for url in product_urls:
+        await agent.message_seller(url)
+        message_user(phone, url)
 
 
 @app.api_route("/sms_webhook", methods=["POST", "GET"])
@@ -63,9 +53,13 @@ async def sms_webhook(request: APIRequest, background_tasks: BackgroundTasks):
         return Response(content=challenge, status_code=200, headers={"Content-Type": "text/plain"})
 
     body = await request.json()
+    print("Received body:", body)
     text = whatsapp.get_text(body)
     media = whatsapp.get_media(body)
     phone = whatsapp.get_phone(body)
+
+    if not phone:
+        return
 
     print(f"Text: {text}")
     print(f"Media: {media}")
@@ -76,11 +70,14 @@ async def sms_webhook(request: APIRequest, background_tasks: BackgroundTasks):
     started = False
 
     if latest_request is None or latest_request.started:
+        print("Starting new request")
         if text is not None and text.lower() == "start":
-            # TODO
-            return "please provide instructions"
+            whatsapp.message_user(
+                phone, """Welcome to the Marketplace Assistant! Please describe what you're looking for. 
+                You can also send images to help us find the best matches. When you're ready, type 'start' to begin.""")
         create_new_request(text, {i: media[i] for i in range(len(media))})
     else:
+        print(f"Continuing current request {latest_request.id}")
         if text.lower() == "start":
             started = True
             new_text = latest_request.text
@@ -94,8 +91,13 @@ async def sms_webhook(request: APIRequest, background_tasks: BackgroundTasks):
             updated_media = latest_request.media
         update_request_by_id(latest_request.id, new_text,
                              updated_media, started)
-        if started:
-            print("Starting marketplace agent with prompt:", latest_request.text)
-            background_tasks.add_task(
-                start_shopping, phone, latest_request.text, media)
-        return "ok"
+    if started:
+        print("Starting marketplace agent with prompt:", latest_request.text)
+        whatsapp.message_user(
+            phone, "🫡 We're on it! We'll let you know when we find some matches.")
+        # background_tasks.add_task(
+        #     start_shopping, phone, latest_request.text, media)
+    else:
+        whatsapp.message_user(
+            phone, "Understood! Type 'start' when you're done providing instructions and we'll begin shopping.")
+    return

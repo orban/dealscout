@@ -4,6 +4,7 @@ from typing import Dict, List
 
 
 FB_BEARER_TOKEN = "EAAPU4Y5G2QgBO9JsZAyXXXuRWXrNdsENglbbCQHZBbjV7lYiTRzvl1gxHQsgK8RPCwX0EZApQj9Dpzs9Mt9FLoqmi8WNwYwZCwe3MA0fg5oZCbAUsOU3TS7YT5gYGsl1PSneMbK8jzYYJn2ZBD6qUqUPIVyPWO1ZBxa0DRIHd5W9k6xOMB7N7gzIM9AZAwBCHzN1VLzcqBGrZAyKS2i6aFRG61T0IZCi9a"
+PHONE_ID = "243241445542000"
 
 
 def download_media(id: str):
@@ -62,3 +63,24 @@ def get_media(body: Dict) -> List[str]:
                         image_ids.append(image_id)
     downloaded = [download_media(id) for id in image_ids]
     return [d for d in downloaded if d is not None]
+
+
+def message_user(phone: str, message: str):
+    url = f'https://graph.facebook.com/v19.0/{PHONE_ID}/messages'
+    headers = {
+        "Authorization": f"Bearer {FB_BEARER_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": phone,
+        "type": "text",
+        "text": {
+            "preview_url": False,
+            "body": message
+        }
+    }
+    response = requests.post(url, headers=headers, json=data)
+    print(f"Whatsapp msg response: {response.status_code} {response.text}")
+    return response.json()
