@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import multion  # noqa
 from asgiref.sync import sync_to_async  # noqa
@@ -41,7 +41,9 @@ class MarketplaceAssistant:
                 },
                 {
                     "role": "user",
-                    "content": f"Parse the following input string into a JSON object with the structure: {{'url': 'URL_PLACEHOLDER', 'errors': ['ERRORS_PLACEHOLDER']}}. Ensure the JSON is well-formed. Input: {input_str}",
+                    "content": f"Parse the following input string into a list of JSON object with the structure: "
+                    "{{'url': 'URL_PLACEHOLDER', 'errors': ['ERRORS_PLACEHOLDER']}}. Ensure the JSON is well-formed."
+                    f"Input: {input_str}",
                 },
             ],
         )
@@ -73,18 +75,21 @@ class MarketplaceAssistant:
             return json.loads(parsed_input)
         return {"url": "", "errors": ["No results found"]}
 
-    async def message_seller(self, urls: List[str]) -> Any:
+    async def message_seller(self, url: str) -> Any:
         """
         Logs into Multion and uses it to message a seller on Facebook Marketplace.
 
         :param urls: The list of URLs of the sellers to be messaged.
         :return: The result of the Multion messaging operation.
         """
-        full_prompt = f"{self.prefix} For each of the following URLs, Opal will now message the seller with a personalized message on Facebook Marketplace. URLs: {' '.join(urls)}"
-        return await sync_to_async(multion.browse)(
+        full_prompt = f"{self.prefix} For the following URL, Opal will now message the seller with a personalized message on Facebook Marketplace. URL: {url} If you're not able to message the seller, simply move on and make a note in 'errors'. Your result should be in the following format: {{'message': 'MESSAGE', 'errors': ['ERRORS']}}"
+        logger.debug(f"Using prompt: {full_prompt}")
+        result = await sync_to_async(multion.browse)(
             {
                 "cmd": full_prompt,
-                "url": "https://www.facebook.com/marketplace/sanfrancisco",
-                "maxSteps": 100,
+                "url": url,
+                "maxSteps": 10,
             }
         )
+        logger.debug(f"Received response: {result}")
+        return result

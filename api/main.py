@@ -1,7 +1,9 @@
-from fastapi import FastAPI
 from typing import Dict, List
-from api.db import *
-from api.multion import MarketplaceAssistant
+
+from fastapi import FastAPI
+
+from api.db import create_new_request, get_latest_request, update_request_by_id
+from api.multion import MarketplaceAssistant  # noqa
 
 app = FastAPI()
 
@@ -24,7 +26,7 @@ async def query(prompt: str):
 
 
 @app.post("/message_seller")
-async def message_seller(urls: list):
+async def message_seller(url: str):
     """
     Endpoint to handle messages to sellers on Facebook Marketplace.
 
@@ -32,7 +34,7 @@ async def message_seller(urls: list):
     :return: A JSON list of messages sent to the sellers.
     """
     agent = MarketplaceAssistant()
-    return await agent.message_seller(urls)
+    return await agent.message_seller(url)
 
 
 def get_text(body: Dict) -> str:
@@ -69,10 +71,10 @@ async def sms_webhook(body: Dict):
             new_text = latest_request.text + "\n" + text
         if media is not None and len(media) > 0:
             updated_media_list = list(latest_request.media.values()) + media
-            updated_media = {i: updated_media_list[i]
-                             for i in range(len(updated_media_list))}
-        update_request_by_id(latest_request.id, new_text,
-                             updated_media, started)
+            updated_media = {
+                i: updated_media_list[i] for i in range(len(updated_media_list))
+            }
+        update_request_by_id(latest_request.id, new_text, updated_media, started)
 
     if started:
         start_agent()
