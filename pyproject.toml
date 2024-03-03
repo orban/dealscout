@@ -12,7 +12,17 @@ python = "^3.10"
 openai = "^1.13.3"
 fastapi = "^0.110.0"
 uvicorn = "^0.27.1"
+requests = "^2.31.0"
+aiohttp = "^3.9.3"
+asyncio = "^3.4.3"
+loguru = "^0.7.2"
+multion = "^0.3.13"
+langchain = "^0.1.10"
+asgiref = "^3.7.2"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.3"
 
 [build-system]
 requires = ["poetry-core"]
