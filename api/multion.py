@@ -8,10 +8,9 @@ from loguru import logger  # noqa
 from openai import OpenAI
 
 # Utilize environment variables with Python 3.11's improved os.environ.get() method
-OPENAI_MODEL_NAME: str = os.environ.get(
-    "OPENAI_MODEL_NAME", "gpt-3.5-turbo-0125")
+OPENAI_MODEL_NAME: str = os.environ.get("OPENAI_MODEL_NAME", "gpt-3.5-turbo-0125")
 OPENAI_API_KEY: Optional[str] = os.environ.get(
-    "OPENAI_API_KEY", "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"
+    "OPENAI_API_KEY",
 )
 DATA_LOCATION: Optional[str] = os.environ.get("DATA_LOCATION")
 
